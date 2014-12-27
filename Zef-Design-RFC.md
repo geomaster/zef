@@ -204,9 +204,9 @@ A *feature provider* in Zef is an implementor of a certain feature. It is
 perfectly reasonable to have many providers for a feature such as "C compiler".
 One of these may implement the feature as GCC, and the other one as MSVC. The
 point is that the differences between these are abstracted away. This gives us
-an extremely powerful mechanism for portable builds. GCC.enable_cpp11 or
-MSVCPP.enable_cpp11 are achieved by different means, but the Zef target will
-call CPP_Compiler.enable_cpp11 and it should do the right thing.
+an extremely powerful mechanism for portable builds. ``GCC.enable_cpp11`` or
+``MSVCPP.enable_cpp11`` are achieved by different means, but the Zef target will
+call ``CPP_Compiler.enable_cpp11`` and it should do the right thing.
 
 In order to achieve modularity, you can nest features as well. For example, if
 the feature provider for a C compiler based on GCC doesn't implement an option
@@ -301,7 +301,7 @@ project:
           allowed:
               - debug
               - release_with_debug_info
-              - nodebug
+              - release
           default: debug
           description: |
               Which debug level to build with.
@@ -383,7 +383,7 @@ compile_c(src, obj): c_compiler opts.debug_level {
     local cc = zef.cc()
                 .add_file(src)
                 .compile_only()
-                .optimize(optimization_level[hello.opts.debug_level]
+                .optimize(optimization_level[hello.opts.debug_level])
                 .output_to(obj)
 
     if hello.opts.debug_level == "debug" then
@@ -405,7 +405,7 @@ exposed $@binary_filename: $@obj_files link_binary {
     return hello.link_binary(hello.obj_files, hello.binary_filename)
 }
 
-exposed all: binary_filename {}
+exposed all: $@binary_filename {}
 exposed clean: bin_dir obj_dir {
     return zef.fs.remove(zef.fs.glob(hello.bin_dir . '/*', hello.obj_dir . '/*'))
 }
@@ -427,12 +427,12 @@ exposed clean: bin_dir obj_dir {
 As you can see, targets are described as:
 
 ```
-target_name [ ( argument+ ) ] [ : dependency+ ] {
+target_name [ ( argument* ) ] [ : dependency* ] {
     lua_code
 }
 ```
 
-lua_code is the Lua code that the target consists of. It is ran inside a
+``lua_code`` is the Lua code that the target consists of. It is ran inside a
 function; the return value of that function is the return value of the target.
 
 A target name may be prefixed with ``!`` which means it is a meta-target, which
