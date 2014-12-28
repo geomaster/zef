@@ -48,28 +48,28 @@ environment, etc., and you get a configure shell script which, when called,
 creates Makefiles for you. You run ``make`` and voila, your project is built.
 But here are some things I don't like:
 
-    * They have a lot of quirks that makes them hard to master. In my opinion,
-      some things can be solved a lot more cleanly than they currently are.
+* They have a lot of quirks that makes them hard to master. In my opinion, some
+  things can be solved a lot more cleanly than they currently are.
 
-    * They are very tightly coupled to Unix systems. Windows users wishing to
-      build the project need, at a minimum, a shell and a copy of make. This is
-      not very pleasant, and, adding insult to injury, libtool and pkg-config
-      are not very good at dealing with Windows libraries (this is
-      understandable since Windows lacks a package system which would make it
-      easy to version and locate libraries).
+* They are very tightly coupled to Unix systems. Windows users wishing to build
+  the project need, at a minimum, a shell and a copy of make. This is not very
+  pleasant, and, adding insult to injury, libtool and pkg-config are not very
+  good at dealing with Windows libraries (this is understandable since Windows
+  lacks a package system which would make it easy to version and locate
+  libraries).
 
-    * If the configuration step fails for some reason, you must re-run it again
-      from the beginning after fixing the problem. This is amplified by it being
-      very slow due to the next point.
-      
-    * The configuration step typically does a lot of costly fork's and exec's,
-      with writing to disk, in order to test different features of the C
-      compiler, for example. For me, I feel this is a bit of overkill. You
-      should be able say 'my project builds on GCC, Clang, MSVC++ on a standard
-      Linux, Windows 7 or later, and OS X platform', and be able to discard
-      other compilers if you wish to.  Automake checks if the C compiler is sane
-      to such depths that no commonly used C compiler would violate.
-    
+* If the configuration step fails for some reason, you must re-run it again from
+  the beginning after fixing the problem. This is amplified by it being very
+  slow due to the next point.
+  
+* The configuration step typically does a lot of costly fork's and exec's, with
+  writing to disk, in order to test different features of the C compiler, for
+  example. For me, I feel this is a bit of overkill. You should be able say 'my
+  project builds on GCC, Clang, MSVC++ on a standard Linux, Windows 7 or later,
+  and OS X platform', and be able to discard other compilers if you wish to.
+  Automake checks if the C compiler is sane to such depths that no commonly used
+  C compiler would violate.
+
 ## CMake
 
 CMake is a cross-platform Makefile (and others) generator, so it gains a lot by
