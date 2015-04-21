@@ -1,0 +1,2 @@
+#!/bin/zsh
+LUA_PATH=/home/geomaster/Projects/zef/zef/src/?.lua\;$LUA_PATH lua ~/Projects/zef/zef/src/zef.lua "$@"

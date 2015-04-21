@@ -1,0 +1,30 @@
+zef.project({
+    name = "hello",
+    version = "0.1.2"
+
+    targets = {
+        configure = function(self)
+            zef.opts.request({
+                'hello.build_type'
+            });
+
+            zef.features.request({
+                'zef.cc'
+            });
+
+            if zef.opts.hello.with_lexer then
+                zef.features.request('zef.yacc')
+
+                self.add_target({
+                    lexer = function(self)
+                        zef.targets.request({
+                            zef.fs.glob('src/lex/*.yacc');
+
+                    
+                    end});
+            end
+
+
+        }
+})
+

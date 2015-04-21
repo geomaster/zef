@@ -1,0 +1,4 @@
+---
+some_flag: true
+build_dir: this is a path
+liked_things: [ ab, ac, ad ]

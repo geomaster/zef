@@ -1,0 +1,2 @@
+Just a reminder for me how the files should look, in lieu of a functional
+prototype and a specification.

@@ -6,6 +6,9 @@ frequent changes, as I rethink some ideas and arrive at better alternatives. It
 as well serves as a way for me to document these things in writing which often helps
 me clarify some fuzzy ideas in my mind.
 
+Note (21-04-2015): This is the old RFC, many design decisions have been made
+since then and it does not reflect the current state.
+
 # Preamble
 
 Today we have a lot of ways to automate the building of our software. Each of
@@ -330,6 +333,31 @@ that this is unstable as hell and subject to very frequent change.
 
 (I am not sure if Lua code is correct, that is completely beside the point.)
 
+```
+obj_dir_rel = "obj"
+bin_dir_rel = "bin"
+program_name = "hello"
+src_dir = "src"
+
+obj_dir = opts.build_dir .. obj_dir_rel
+bin_dir = opts.build_dir .. bin_dir_rel
+binary_filename = opts.build_dir .. program_name .. zef.cc.executable_extension()
+
+src_files:
+    zef.fs.glob(obj_dir .. "/*.c")
+
+src_files: src/*.c opts.say_to_person
+    files = zef.fs.glob(obj_dir .. "/*.c")
+    if options.say_to_person then
+        files["src/hello_world.c"] = nil
+    else
+        files["src/hello_person.c"] = nil
+
+    return files
+
+
+
+```
 ```
 obj_dir_rel = "obj"
 bin_dir_rel = "bin"

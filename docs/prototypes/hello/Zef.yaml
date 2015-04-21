@@ -1,0 +1,37 @@
+---
+project: Zef
+description: |
+    It's a project! It does stuff!
+    
+website: https://github.com/geomaster/zef
+
+options:
+    - name: build_dir
+      description: Where to build stuff
+      type: path
+
+    - name: some_flag
+      description: Whether some_flag is set or not
+      type: boolean
+
+    - name: favorite_animal
+      description: Favorite animal of the person building Zef
+      default: cat
+      type: enum
+      values:
+          - cat
+          - dog
+          - cuttlefish
+          - gmaz
+
+    - name: liked_things
+      tuple: yes
+      description: A list of liked things
+      type: enum
+      values:
+          - ab
+          - ac
+          - ad
+          - bc
+          - bd
+
