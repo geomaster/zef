@@ -3,6 +3,7 @@ local zef_log = require('zef-log')
 local zef_eye = require('zef-eye')
 local lfs = require('lfs')
 local lyaml = require('lyaml')
+local io = require('io')
 
 local ZefYamlFilenames = {
     'Zef.yaml',
