@@ -166,7 +166,7 @@ description: blah blah
             function()
                 local ret, err = read_validate_zefyaml(proj)
                 assert.falsy(ret)
-                assert.are.same(err, 'required entry `project` not found')
+                assert.are.same('required entry `project` not found', err)
             end)
         end)
 
@@ -194,7 +194,7 @@ description: blah blah
                     function()
                         local ret, err = read_validate_zefyaml(proj)
                         assert.falsy(ret)
-                        assert.are.same(err, 'unexpected type for entry `'.. entry .. '`')
+                        assert.are.same('unexpected type for entry `'.. entry .. '`', err)
                     end)
                 end
             end
