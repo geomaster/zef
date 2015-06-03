@@ -201,7 +201,7 @@ description: blah blah
         end)
 
 
-        it('accepts all allowed non-options keys', function()
+        it('accepts and correctly parses allowed non-options keys', function()
             with_zefyaml(proj,
                 [[
 ---
@@ -228,9 +228,6 @@ version: 1.2.1
 ---
 project: Project Name
 invalid_key: Invalid key value
-invkey2:
-        - invkey3: aaaa
-        - invkey4: aaa
                 ]], 
             function()
                 local ret, err = read_validate_zefyaml(proj)
@@ -238,6 +235,155 @@ invkey2:
                 assert.are.same('unexpected entry: `invalid_key`', err)
             end)
         end)
-    end)
 
+        it('accepts and correctly parses a valid options declaration', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: string_option
+      description: StringDesc
+      type: string
+      default: Default String Value
+
+    - name: path_option
+      description: PathDesc
+      type: path
+      default: /
+
+    - name: number_option
+      description: NumberDesc
+      type: number
+      default: 42
+
+    - name: enum_option
+      description: EnumDesc
+      type: enum
+      default: opt1
+      values:
+        - opt1
+        - opt2
+        - opt3
+
+    - name: boolean_option
+      description: BoolDesc
+      type: boolean
+      default: yes
+
+    - name: string_tuple_option
+      description: StringTupleDesc
+      type: string
+      tuple: yes
+      default: ['aaaa', 'bbbb', 'cccc']
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.are.same({
+                    project = 'Project Name',
+                    options = {
+                        string_option = {
+                            ['type'] = 'string',
+                            description = 'StringDesc',
+                            default = 'Default String Value',
+                            tuple = false
+                        },
+
+                        path_option = {
+                            ['type'] = 'path',
+                            description = 'PathDesc',
+                            default = '/',
+                            tuple = false
+                        },
+
+                        number_option = {
+                            ['type'] = 'number',
+                            description = 'NumberDesc',
+                            default = 42, 
+                            tuple = false
+                        },
+
+                        enum_option = {
+                            ['type'] = 'enum',
+                            description = 'EnumDesc',
+                            values = { 'opt1', 'opt2', 'opt3' },
+                            default = 'opt1',
+                            tuple = false
+                        },
+
+                        boolean_option = {
+                            ['type'] = 'boolean',
+                            description = 'BoolDesc',
+                            default = true, 
+                            tuple = false,
+                        },
+
+                        string_tuple_option = {
+                            ['type'] = 'string',
+                            description = 'StringTupleDesc',
+                            default = { 'aaaa', 'bbbb', 'cccc' },
+                            tuple = true
+                        }
+                    }
+                }, ret);
+            end)
+        end)
+
+        it('rejects invalid keys for options', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options: 
+    - name: option
+      type: string
+      invalid_key: invalid key value
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('unexpected entry: `invalid_key` in option `option`', err)
+            end)
+
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: non_enum_option
+      type: string
+      values: [ 'a', 'b', 'c' ]
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('`values` not allowed for types that are not enum in option `non_enum_option`', err)
+            end)
+
+        end)
+
+
+        it('rejects incomplete options', function()
+            local entries = { 
+                name = { missing = 'type', value = 'option'},
+                ['type'] = { missing = 'name', value = 'string' }
+            }
+
+            for k, v in pairs(entries) do
+                with_zefyaml(proj,
+                    [[
+---
+project: Project Name
+options:
+    - ]] 
+                .. k .. ': ' .. v.value .. '\n',
+                function()
+                    local ret, err = read_validate_zefyaml(proj)
+                    assert.falsy(ret)
+                    assert.are.same('required entry `'.. v.missing ..'` in option `' .. (k == 'name' and v.value or 'unknown') .. '` not found', err)
+
+                end)
+            end
+        end)
+    end)
 end)
