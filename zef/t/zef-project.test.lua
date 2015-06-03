@@ -41,6 +41,12 @@ describe("zef-project", function()
         restore_fsmock(fs, proj)
     end
 
+    function with_zefyaml(proj, zefyaml, fn) 
+        with_mock_fs(proj, {
+            ['Zef.yaml'] = zefyaml
+        }, {}, {}, fn)
+    end
+        
     setup(function()
         _real_io = require('io')
         _real_lfs = require('lfs')
@@ -57,89 +63,104 @@ describe("zef-project", function()
         package.loaded.lfs = _real_lfs
     end)
 
-    it('fails with no Zef.yaml', function()
-        with_mock_fs(proj, {
-            -- empty dir
-        }, {}, {}, function()
-            local ret, err = proj:read_zefyaml()
-            assert.falsy(ret)
-            assert.truthy(err:find('no Zef.yaml file'))
+    describe('Zef.yaml handling', function()
+        it('fails with no Zef.yaml', function()
+            with_mock_fs(proj, {
+                -- empty dir
+            }, {}, {}, function()
+                local ret, err = proj:read_zefyaml()
+                assert.falsy(ret)
+                assert.truthy(err:find('no Zef.yaml file'))
+            end)
         end)
-    end)
 
-    it('gracefully handles an open error', function()
-        with_mock_fs(proj, {
-            ['Zef.yaml'] = 'this file will not be opened'
-        }, {'Zef.yaml'}, {}, function()
-            local ret, err = proj:read_zefyaml()
-            assert.falsy(ret)
-            assert.truthy(err:find('could not open'))
+        it('gracefully handles an open error', function()
+            with_mock_fs(proj, {
+                ['Zef.yaml'] = 'this file will not be opened'
+            }, {'Zef.yaml'}, {}, function()
+                local ret, err = proj:read_zefyaml()
+                assert.falsy(ret)
+                assert.truthy(err:find('could not open'))
+            end)
         end)
-    end)
 
-    it('gracefully handles a read error', function()
-        with_mock_fs(proj, {
-            ['Zef.yaml'] = 'this file will not be read'
-        }, {}, {'Zef.yaml'}, function()
-            local ret, err = proj:read_zefyaml()
-            assert.falsy(ret)
-            assert.truthy(err:find('error while reading'))
+        it('gracefully handles a read error', function()
+            with_mock_fs(proj, {
+                ['Zef.yaml'] = 'this file will not be read'
+            }, {}, {'Zef.yaml'}, function()
+                local ret, err = proj:read_zefyaml()
+                assert.falsy(ret)
+                assert.truthy(err:find('error while reading'))
+            end)
         end)
-    end)
 
-    it('fails with more than one Zef.yaml', function()
-        with_mock_fs(proj, {
-            ['Zef.yaml'] = 'one zef.yaml',
-            ['zef.yaml'] = 'one zef.yaml'
-        }, {}, {}, function()
+        it('fails with more than one Zef.yaml', function()
+            with_mock_fs(proj, {
+                ['Zef.yaml'] = 'one zef.yaml',
+                ['zef.yaml'] = 'one zef.yaml'
+            }, {}, {}, function()
 
-            local ret, err = proj:read_zefyaml()
-            assert.falsy(ret)
-            assert.truthy(err:find('cannot decide which to use'))
+                local ret, err = proj:read_zefyaml()
+                assert.falsy(ret)
+                assert.truthy(err:find('cannot decide which to use'))
+            end)
         end)
-    end)
 
-    it('can read a rudimentary Yaml file', function()
-        with_mock_fs(proj, {
-            ['Zef.yaml'] =
+        it('can read a rudimentary Yaml file', function()
+            with_zefyaml(proj, 
                 [[
----
-key1: string_val
-key2: 12
-key3:
-    - item1: item1val
-    - item2: item2val
-    - item3:
-        - 12
-        - 13
-        - 14
+                ---
+                key1: string_val
+                key2: 12
+                key3:
+                    - item1: item1val
+                    - item2: item2val
+                    - item3:
+                        - 12
+                        - 13
+                        - 14
 
-key4: yes
-]]
-        }, {}, {}, function() 
-            local yaml, err = proj:read_zefyaml()
-            assert.are.same(yaml,
-            { 
-                key1 = 'string_val',
-                key2 = 12,
-                key3 = {
-                    { 
-                        item1 = 'item1val' 
-                    },
-                    { 
-                        item2 = 'item2val' 
-                    },
-                    { 
-                        item3 = {
-                            12,
-                            13,
-                            14
+                key4: yes
+                ]],
+            function() 
+                local yaml, err = proj:read_zefyaml()
+                assert.are.same(yaml,
+                { 
+                    key1 = 'string_val',
+                    key2 = 12,
+                    key3 = {
+                        { 
+                            item1 = 'item1val' 
+                        },
+                        { 
+                            item2 = 'item2val' 
+                        },
+                        { 
+                            item3 = {
+                                12,
+                                13,
+                                14
+                            }
                         }
-                    }
-                },
+                    },
 
-                key4 = true
-            });
+                    key4 = true
+                });
+            end)
+        end)
+    end)
+
+    describe('Zef.yaml validation', function()
+        it('fails when mandatory keys are not given', function()
+            with_zefyaml(proj,
+                [[
+                ---
+                ]], 
+            function()
+
+
+            end)
+
         end)
     end)
 
