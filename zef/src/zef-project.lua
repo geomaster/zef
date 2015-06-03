@@ -39,7 +39,7 @@ function zef_project.read_zefyaml()
     local foundfile, err = zef_project.find_file(ZefYamlFilenames)
 
     if not foundfile then
-        return nil, err or 'no Zef.yaml file present'
+        return nil, (err or 'no Zef.yaml file present')
     end
 
     local f, err = io.open(foundfile, 'rb')
@@ -73,6 +73,10 @@ function zef_project.validate_zefyaml(zefyaml)
     local mandatory_keys = {
         project = false
     }
+
+    if type(zefyaml) ~= 'table' then
+        return nil, string.format('invalid data type for Zef.yaml data')
+    end
 
     for k, v in pairs(zefyaml) do
         if not valid_keys[k] then
