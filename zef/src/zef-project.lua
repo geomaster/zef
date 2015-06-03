@@ -34,7 +34,7 @@ function zef_project.find_file(names)
     return foundfile or nil, nil
 end
 
-function zef_project.read_zefyaml(proj)
+function zef_project.read_zefyaml()
     -- check for Zef.yaml
     local foundfile, err = zef_project.find_file(ZefYamlFilenames)
 
@@ -253,7 +253,7 @@ function zef_project.validate_options(desc, options)
     return pass and options or nil
 end
 
-function zef_project.read_zefconfig(proj)
+function zef_project.read_zefconfig()
     local f, err = io.open(foundfile, "rb")
     if not f then return nil, string.format('could not open `%s`', foundfile) end
 
