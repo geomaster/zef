@@ -9,7 +9,7 @@ function restore_fsmock(fsmock, zefproj)
     fsmock:restore(zefproj)
 end
 
-describe("zef_project", function()
+describe("zef-project", function()
     local proj;
 
     function with_new_project(fn)
