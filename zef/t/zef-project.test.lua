@@ -220,9 +220,23 @@ version: 1.2.1
                     options = {}
                 }, ret)
             end)
-            
+        end)
 
-
+        it('rejects invalid keys', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+invalid_key: Invalid key value
+invkey2:
+        - invkey3: aaaa
+        - invkey4: aaa
+                ]], 
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('unexpected entry: `invalid_key`', err)
+            end)
         end)
     end)
 
