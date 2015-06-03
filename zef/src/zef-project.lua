@@ -134,7 +134,7 @@ function zef_project.validate_zefyaml(zefyaml)
 
             for k1, v1 in pairs(mandatory_keys) do
                 if not v1 then
-                    return nil, string.format('required entry `%s` in option `%s` not found', k1, v.name)
+                    return nil, string.format('required entry `%s` in option `%s` not found', k1, v.name or 'unknown')
                 end
             end
 
