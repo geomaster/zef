@@ -154,7 +154,7 @@ function zef_project.validate_zefyaml(zefyaml)
                 ['type'] = typ,
                 values = v.values,
                 description = v.description,
-                tuple = v.tuple,
+                tuple = v.tuple or false,
                 default = v.default
             }
         end
