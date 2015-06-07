@@ -209,8 +209,10 @@ end
 function zef_project.validate_options(desc, options)
     local optdesc = desc.options or {}
     local pass = true
+    local errors = {}
+
     local nonpass = function(msg) 
-        zef_log.err(msg)
+        table.insert(errors, msg)
         return false
     end
   
@@ -259,7 +261,12 @@ function zef_project.validate_options(desc, options)
             end
         end
     end
-    return pass and options or nil
+    
+    if pass then 
+        return options
+    else
+        return nil, errors
+    end
 end
 
 function zef_project.read_zefconfig()
@@ -292,9 +299,14 @@ function zef_project.init()
     end
     proj.options = ret
 
-    local ret = zef_project.validate_options(proj.description, proj.options)
+    local ret, err = zef_project.validate_options(proj.description, proj.options)
     if not ret then
-        return nil, zef_log.err("could not validate all options")
+        zef_log.err('could not validate all options:')
+        for _, v in ipairs(err) do
+            zef_log.err('  ' .. v)
+        end
+            
+        return nil, 'could not validate all options'
     end
     proj.options = ret
 
