@@ -70,48 +70,56 @@ describe("zef-project", function()
         package.loaded.lfs = _real_lfs
     end)
 
-    describe('Zef.yaml parser', function()
-        it('fails with no Zef.yaml', function()
-            with_mock_fs(proj, {
-                -- empty dir
-            }, {}, {}, function()
-                local ret, err = proj:read_zefyaml()
-                assert.falsy(ret)
-                assert.truthy(err:find('no `Zef.yaml` file'))
-            end)
-        end)
+    describe('YAML file parser', function()
+        local yaml_files = { 
+            { f = proj.read_zefyaml, files = {'Zef.yaml', 'zef.yaml'} }, 
+            { f = proj.read_zefconfig, files = { 'ZefConfig.yaml', 'zefconfig.yaml' } }
+        }
 
-        it('gracefully handles an open error', function()
-            with_mock_fs(proj, {
-                ['Zef.yaml'] = 'this file will not be opened'
-            }, {'Zef.yaml'}, {}, function()
-                local ret, err = proj:read_zefyaml()
-                assert.falsy(ret)
-                assert.truthy(err:find('could not open'))
+        for _, v in ipairs(yaml_files) do
+            it('fails with no ' .. v.files[1], function()
+                with_mock_fs(proj, {
+                    -- empty dir
+                }, {}, {}, function()
+                    local ret, err = v.f()
+                    assert.falsy(ret)
+                    assert.truthy(err:find('no `' .. v.files[1] .. '` file'))
+                end)
             end)
-        end)
 
-        it('gracefully handles a read error', function()
-            with_mock_fs(proj, {
-                ['Zef.yaml'] = 'this file will not be read'
-            }, {}, {'Zef.yaml'}, function()
-                local ret, err = proj:read_zefyaml()
-                assert.falsy(ret)
-                assert.truthy(err:find('error while reading'))
+            it('gracefully handles an open error in ' .. v.files[1], function()
+                with_mock_fs(proj, {
+                    [v.files[1]] = 'this file will not be opened'
+                }, {v.files[1]}, {}, function()
+                    local ret, err = v.f()
+                    assert.falsy(ret)
+                    assert.truthy(err:find('could not open'))
+                end)
             end)
-        end)
 
-        it('fails with more than one Zef.yaml', function()
-            with_mock_fs(proj, {
-                ['Zef.yaml'] = 'one zef.yaml',
-                ['zef.yaml'] = 'one zef.yaml'
-            }, {}, {}, function()
-
-                local ret, err = proj:read_zefyaml()
-                assert.falsy(ret)
-                assert.truthy(err:find('cannot decide which to use'))
+            it('gracefully handles a read error in ' .. v.files[1], function()
+                with_mock_fs(proj, {
+                    [v.files[1]] = 'this file will not be read'
+                }, {}, {v.files[1]}, function()
+                    local ret, err = v.f()
+                    assert.falsy(ret)
+                    assert.truthy(err:find('error while reading'))
+                end)
             end)
-        end)
+
+            it('fails with more than one ' .. v.files[1], function()
+                local vfs = {}
+                for i, v in ipairs(v.files) do
+                    vfs[v] = 'file number ' .. i
+                end
+
+                with_mock_fs(proj, vfs, {}, {}, function()
+                    local ret, err = v.f()
+                    assert.falsy(ret)
+                    assert.truthy(err:find('cannot decide which to use'))
+                end)
+            end)
+        end
 
         it('can read a rudimentary Yaml file', function()
             with_zefyaml(proj, 
@@ -130,7 +138,7 @@ key3:
 key4: yes
                 ]],
             function() 
-                local yaml, err = proj:read_zefyaml()
+                local yaml, err = proj.read_zefyaml()
                 assert.are.same({ 
                     key1 = 'string_val',
                     key2 = 12,
@@ -401,4 +409,5 @@ options:
             end)
         end)
     end)
+
 end)
