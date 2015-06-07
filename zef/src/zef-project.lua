@@ -34,12 +34,13 @@ function zef_project.find_file(names)
     return foundfile or nil, nil
 end
 
-function zef_project.read_zefyaml()
-    -- check for Zef.yaml
-    local foundfile, err = zef_project.find_file(ZefYamlFilenames)
+function zef_project.read_yaml_file(filenames)
+    -- check for the existence of this file
+    local foundfile, err = zef_project.find_file(filenames)
 
     if not foundfile then
-        return nil, (err or 'no Zef.yaml file present')
+        -- the first filename is the 'preferred' one
+        return nil, (err or string.format('no `%s` file present', filenames[1]))
     end
 
     local f, err = io.open(foundfile, 'rb')
@@ -52,13 +53,17 @@ function zef_project.read_zefyaml()
         return nil, string.format('error while reading `%s`', foundfile)
     end
 
-    -- parse Zef.yaml
+    -- parse yaml
     local ret, yaml = pcall(function() return lyaml.load(fstr) end)
     if not ret then
         return nil, string.format('error while parsing `%s`: %s', foundfile, yaml)
     end
     
     return yaml
+end
+
+function zef_project.read_zefyaml()
+    return zef_project.read_yaml_file(ZefYamlFilenames)
 end
 
 function zef_project.validate_zefyaml(zefyaml)
@@ -258,23 +263,12 @@ function zef_project.validate_options(desc, options)
 end
 
 function zef_project.read_zefconfig()
-    local f, err = io.open(foundfile, "rb")
-    if not f then return nil, string.format('could not open `%s`', foundfile) end
-
-    local fstr = f:read('*all')
-    if not fstr then return nil, string.format('error reading from `%s`', foundfile) end
-
-    local ret, yaml = pcall(function() return lyaml.load(fstr) end)
-    if not ret then 
-        return nil, string.format('error while parsing `%s`: %s', yaml)
-    end
-
-    return yaml
+    return zef_project.read_yaml_file(ZefConfigFilenames)
 end
 
 function zef_project.init()
     local proj = {}
-    local ret, err = zef_project.read_zefyaml(proj)
+    local ret, err = zef_project.read_zefyaml()
     if not ret then
         return nil, zef_log.err(err)
     end
@@ -292,15 +286,7 @@ function zef_project.init()
     end
     proj.cachedb = cachedb
     
-    local foundzefconf, err = zef_project.find_file(ZefConfigFilenames)
-    if not foundzefconf then
-        return nil, zef_log.err(err)
-    end
-
-    local conftime, err = cachedb:get_file_timestamp(foundzefconf)
-
-
-    local ret, err = zef_project.read_zefconfig(proj)
+    local ret, err = zef_project.read_zefconfig()
     if not ret then 
         return nil, zef_log.err(err)
     end
