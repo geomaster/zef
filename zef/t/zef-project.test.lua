@@ -479,6 +479,56 @@ options:
             end)
         end)
 
+        it('rejects unknown options', function()
+            with_zefconfig(proj, 
+                [[
+---
+project: Project Name
+options:
+    - name: known_option
+      type: string
+      default: this is default
+      description: Is not a required option
+                ]], 
+                [[
+---
+unknown_option: 300
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.falsy(ret)
+                assert.are.same(1, #err)
+                assert.are.same('option `unknown_option` not recognized', err[1])
+            end)
+        end)
+
+        it('rejects when a required option is not defined', function()
+            with_zefconfig(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: required_option
+      type: string
+      description: Is a required option
+
+    - name: optional_option
+      type: string
+      default: this is default
+      description: Is not a required option
+                ]],
+                [[
+---
+optional_option: overriden default
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.falsy(ret)
+                assert.are.same(1, #err)
+                assert.are.same('option `required_option` required but not supplied', err[1])
+            end)
+        end)
+
         it('rejects bad option types', function()
             with_zefconfig(proj, zefyaml, 
                 [[
