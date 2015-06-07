@@ -595,4 +595,70 @@ string_tuple_option: abcd
 
     end)
 
+    describe('init method', function()
+        it('fails if Zef.yaml reading fails', function()
+            with_mock_fs(proj, {}, {}, {}, function()
+                local proj, err = zef_project.init()
+                assert.falsy(proj)
+            end)
+        end)
+
+        it('fails if Zef.yaml validation fails', function()
+            with_zefyaml(
+                [[
+---
+bad_key: bad_value
+                ]],
+            function()
+                local proj, err = zef_project.init()
+                assert.falsy(proj)
+            end)
+        end)
+
+        it('fails if cache database opening fails', function()
+            __old_cachedb = package.loaded.zef_cachedb
+            package.loaded.zef_cachedb.open = function()
+                return false, 'Requested orchestrated error on zef_cachedb.open()'
+            end
+
+            local proj, err = zef_project.init()
+            assert.falsy(proj)
+        end)
+
+        it('fails if ZefConfig.yaml reading fails', function()
+            with_mock_fs(proj, {
+                ['Zef.yaml'] = [[
+---
+project: Project Name
+options:
+    - name: string_option
+      type: string
+      default: aaa
+                ]]
+            }, {}, {}, function()
+                local proj, err = zef_project.init()
+                assert.falsy(proj)
+            end)
+        end)
+
+        it('fails if ZefConfig.yaml options cannot be validated', function()
+            with_zefconfig(proj, 
+                [[
+---
+project: Project Name
+options:
+    - name: string_option
+      type: string
+      default: aaa
+                ]],
+                [[
+---
+string_option: [ 'a', 'b', 'c' ]
+                ]],
+            function()
+                local proj, err = zef_project.init()
+                assert.falsy(proj)
+            end)
+        end)
+    end)
 end)
