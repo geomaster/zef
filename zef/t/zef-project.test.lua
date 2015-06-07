@@ -47,6 +47,13 @@ describe("zef-project", function()
         }, {}, {}, fn)
     end
 
+    function with_zefconfig(proj, zefyaml, zefconfig, fn)
+        with_mock_fs(proj, {
+            ['Zef.yaml'] = zefyaml,
+            ['ZefConfig.yaml'] = zefconfig
+        }, {}, {}, fn)
+    end
+
     function read_validate_zefyaml(proj)
         local yaml = proj.read_zefyaml()
         assert.are.same('table', type(yaml))
@@ -54,6 +61,13 @@ describe("zef-project", function()
         return proj.validate_zefyaml(yaml)
     end
         
+    function read_validate_zefconfig(proj)
+        local desc = read_validate_zefyaml(proj)
+        local yaml = proj.read_zefconfig()
+
+        return proj.validate_options(desc, yaml or {})
+    end
+
     setup(function()
         _real_io = require('io')
         _real_lfs = require('lfs')
@@ -408,6 +422,127 @@ options:
                 assert.are.same('not a valid option type: `invalid_type` in option `option1`', err)
             end)
         end)
+    end)
+
+    describe('ZefConfig.yaml option validator', function()
+        local zefyaml = [[
+---
+project: Project Name
+options:
+    - name: string_option
+      description: StringDesc
+      type: string
+      default: Default String Value
+
+    - name: path_option
+      description: PathDesc
+      type: path
+      default: /
+
+    - name: number_option
+      description: NumberDesc
+      type: number
+      default: 42
+
+    - name: enum_option
+      description: EnumDesc
+      type: enum
+      default: opt1
+      values:
+        - opt1
+        - opt2
+        - opt3
+
+    - name: boolean_option
+      description: BoolDesc
+      type: boolean
+      default: yes
+
+    - name: string_tuple_option
+      description: StringTupleDesc
+      type: string
+      tuple: yes
+      default: ['aaaa', 'bbbb', 'cccc']
+        ]]
+
+        it('validates valid defaults', function()
+            with_zefconfig(proj, zefyaml, '', function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.are.same({
+                    string_option = 'Default String Value',
+                    path_option = '/',
+                    number_option = 42,
+                    enum_option = 'opt1',
+                    boolean_option = true,
+                    string_tuple_option = { 'aaaa', 'bbbb', 'cccc' }
+                }, ret)
+            end)
+        end)
+
+        it('rejects bad option types', function()
+            with_zefconfig(proj, zefyaml, 
+                [[
+---
+string_option: 42
+path_option: 41
+number_option: not a number
+enum_option: optN
+boolean_option: 3
+string_tuple_option: [ 2, 3, yes ]
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.falsy(ret)
+                
+                local real_types = {
+                    string_option = 'string',
+                    path_option = 'path',
+                    number_option = 'number',
+                    enum_option = 'enum',
+                    boolean_option = 'boolean'
+                }
+
+                local errstr = ''
+                for _, v in ipairs(err) do
+                    errstr = errstr .. v .. '\n'
+                end
+
+                for k, v in pairs(real_types) do
+                    assert.truthy(errstr:find('option `' .. k .. '` should be of type `' .. v .. '`'))
+                end
+
+                for _, v in ipairs({1, 2, 3}) do
+                    assert.truthy(errstr:find('element ' .. v .. ' of option `string_tuple_option` should be '..
+                        'of type `string`'))
+                end
+            end)
+
+            with_zefconfig(proj, zefyaml,
+                [[
+---
+string_tuple_option: 40
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.falsy(ret)
+                assert.are.same(1, #err)
+                assert.are.same('option `string_tuple_option` should be a tuple of type `string`, '..
+                    'single value of wrong type given', err[1])
+            end)
+        end)
+
+        it('assumes a single-valued tuple when appropriate', function()
+            with_zefconfig(proj, zefyaml, 
+                [[
+---
+string_tuple_option: abcd
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.are.same({ 'abcd' }, ret['string_tuple_option'])
+            end)
+        end)
+
     end)
 
 end)
