@@ -77,7 +77,7 @@ describe("zef-project", function()
             }, {}, {}, function()
                 local ret, err = proj:read_zefyaml()
                 assert.falsy(ret)
-                assert.truthy(err:find('no Zef.yaml file'))
+                assert.truthy(err:find('no `Zef.yaml` file'))
             end)
         end)
 
@@ -236,7 +236,7 @@ invalid_key: Invalid key value
             end)
         end)
 
-        it('accepts and correctly parses a valid options declaration', function()
+        it('accepts and correctly parses a valid project declaration', function()
             with_zefyaml(proj,
                 [[
 ---
@@ -362,7 +362,6 @@ options:
 
         end)
 
-
         it('rejects incomplete options', function()
             local entries = { 
                 name = { missing = 'type', value = 'option'},
@@ -384,6 +383,22 @@ options:
 
                 end)
             end
+        end)
+
+        it('rejects invalid option types', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: invalid_type
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('not a valid option type: `invalid_type` in option `option1`', err)
+            end)
         end)
     end)
 end)
