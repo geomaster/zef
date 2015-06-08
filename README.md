@@ -3,7 +3,7 @@
 Zef is a build system I'm currently writing in which I hope to solve some
 problems that I've been having with a lot of others before. I am writing it in
 Lua, while the build scripts will most probably be in MoonScript or a DSL on top
-of Lua. It is a (beta build system)[1].
+of Lua. It is a [beta build system][1].
 
 [1]: http://gittup.org/tup/build_system_rules_and_algorithms.pdf
 
