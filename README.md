@@ -1,15 +1,21 @@
 # Zef
 
-Zef will be a build system which hopefully solves many inherent problems in
-current build systems. I have not used all of them and I do not claim they are
-all bad or have issues, I just want to create a build system which is completely
-aligned with my needs. Input from others is very welcome.
+Zef is a build system I'm currently writing in which I hope to solve some
+problems that I've been having with a lot of others before. I am writing it in
+Lua, while the build scripts will most probably be in MoonScript or a DSL on top
+of Lua. It is a (beta build system)[1].
 
-## The RFC
+[1]: http://gittup.org/tup/build_system_rules_and_algorithms.pdf
 
-I currently only have an RFC outlining the basic design and principles behind
-Zef. I invite everyone to comment on it and send pull requests. Once I am
-confident I have developed a good design, I'll proceed to implement it. You can
-see the RFC [here](Zef-Design-RFC.md).
+## Progress
 
+Not much at the time being. If you're interested, you can check out the docs/
+subdirectory, but I'm not always keeping those in sync as I iterate on zef and
+its core ideas, so take everything with a grain of salt.
+
+## Contribution
+
+I'm not sure if anyone can contribute anything for now, as this is mostly inside
+my head. But if you like the idea, feel free to shoot me an email (or submit a
+pull request if you come across something that needs fixing).
 
