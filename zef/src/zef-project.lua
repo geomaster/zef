@@ -1,6 +1,7 @@
 local zef_project = {}
 local zef_log = require('zef-log')
 local zef_eye = require('zef-eye')
+local zef_cachedb = require('zef-cachedb')
 local lfs = require('lfs')
 local lyaml = require('lyaml')
 local io = require('io')
