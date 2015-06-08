@@ -1,92 +1,50 @@
-obj_dir_rel = "obj"
 bin_dir_rel = "bin"
+obj_dir_rel = "obj"
 program_name = "hello"
 src_dir = "src"
 
--- *****************************************
+bin_dir = @opts.build_dir .. @bin_dir_rel
+obj_dir = @opts.build_dir .. @obj_dir_rel
+executable = $as_file(@bin_dir .. $cc.executable_filename(@program_name))
 
-obj_dir: obj_dir_rel opts.build_dir {
-    return hello.opts.build_dir .. hello.obj_dir_rel
-}
-
-bin_dir: bin_dir_rel opts.build_dir {
-    return hello.opts.build_dir .. hello.bin_dir_rel
-}
-
-binary_filename: program_name opts.build_dir {
-    return hello.opts.build_dir .. hello.program_name .. zef.cc.executable_extension()
-}
-
-c_compiler: zef.cc zef.cc.{link_only,compile_only,optimize,debug_symbols} {}
-
-src_files: src/*.c opts.say_to_person {
-    files = zef.fs.glob(obj_dir .. "/*.c")
-    if options.say_to_person then
-        files["src/hello_world.c"] = nil
-    else
-        files["src/hello_person.c"] = nil
-    end
-
+src_files:
+    local files = $fs.glob(@src_dir .. "/*.c")
+    files[@opts.hello_to_user and "src/hello_world.c" or "src/hello_user.c"] = nil
     return files
-}
 
-src_to_obj(src): src_dir obj_dir {
-    return zef.util.path_subst(
-        src_dir . '/%.c',
-        obj_dir . '/%.o')
-}
+obj_to_src(obj):
+    return $as_file($util.path_subst(@obj_dir .. "/%.o", @src_dir .. "/%.c", obj.filename))
 
-obj_files: obj_dir src_files {
-    return zef.map(hello.src_to_obj, hello.src_files)
-}
+src_to_obj(src):
+    return $as_file($util.path_subst(@src_dir .. "/%.c", @obj_dir .. "/%.o", src.filename))
 
-compile_c(src, obj): c_compiler opts.debug_level {
+obj_files:
+    return $map(@src_files, @src_to_obj)
+
+compile_c(src, obj):
     local optimization_level = {
         debug: 0,
         release_with_debug_info: 2,
         release: 2
     }
-
-    local cc = zef.cc()
+    local cc = $cc()
                 .add_file(src)
                 .compile_only()
-                .optimize(optimization_level[hello.opts.debug_level]
+                .optimize(optimization_level[@opts.debug_level])
                 .output_to(obj)
 
-    if hello.opts.debug_level == "debug" then
-        cc.debug_symbols()
-    end
-
     return cc.run()
-}
 
-link_binary(obj_files, binary): c_compiler {
-    return zef.cc()
-             .add_files(obj_files)
-             .link_only()
-             .output_to(binary)
-             .run()
-}
+link_binary(objs, bin):
+    return $cc()
+            .link_only()
+            .add_files(objs)
+            .output_to(bin)
 
-exposed $@binary_filename: $@obj_files link_binary {
-    return hello.link_binary(hello.obj_files, hello.binary_filename)
-}
+each (obj_files) as obj:
+    local src = @obj_to_src(src)
+    return @compile_c(src, obj)
 
-exposed all: binary_filename {}
-exposed clean: bin_dir obj_dir {
-    return zef.fs.remove(zef.fs.glob(hello.bin_dir . '/*', hello.obj_dir . '/*'))
-}
-
-!src_file_rules: src_files compile_c {
-    for src_file in pairs(hello.src_files)
-        local obj_file = hello.src_to_obj(src_file)
-        zef.add_target(
-            hello,
-            "$" .. obj_file,
-            "$" .. src_file,
-            function() 
-                return hello.compile_c(src_file, obj_file)
-            end)
-    end
-}
+(executable):
+    return @link_binary(@obj_files, @executable)
 
