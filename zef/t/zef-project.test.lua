@@ -1,4 +1,6 @@
 local fsmock = require('filesystem-mock')
+local logmock = require('zeflog-mock')
+local cachedbmock = require('zefcachedb-mock')
 package.path = '../src/?.lua;' .. package.path
 
 function inject_fsmock(fsmock, zefproj)
@@ -71,9 +73,13 @@ describe("zef-project", function()
     setup(function()
         _real_io = require('io')
         _real_lfs = require('lfs')
+        _real_zeflog = require('zef-log')
+        _real_cachedb = require('zef-cachedb')
 
         package.loaded.io = fsmock.io
         package.loaded.lfs = fsmock.lfs
+        package.loaded['zef-log'] = logmock
+        package.loaded['zef-cachedb'] = cachedbmock
 
         proj = require('zef-project')
     end)
@@ -82,6 +88,8 @@ describe("zef-project", function()
         proj = nil
         package.loaded.io = _real_io
         package.loaded.lfs = _real_lfs
+        package.loaded['zef-log'] = _real_zeflog
+        package.loaded['zef-cachedb'] = _real_cachedb
     end)
 
     describe('YAML file parser', function()
@@ -598,31 +606,41 @@ string_tuple_option: abcd
     describe('init method', function()
         it('fails if Zef.yaml reading fails', function()
             with_mock_fs(proj, {}, {}, {}, function()
-                local proj, err = zef_project.init()
-                assert.falsy(proj)
+                local ret, err = proj.init()
+                assert.falsy(ret)
+                assert.are.same('no `Zef.yaml` file present', err)
             end)
         end)
 
         it('fails if Zef.yaml validation fails', function()
-            with_zefyaml(
+            with_zefyaml(proj,
                 [[
 ---
 bad_key: bad_value
                 ]],
             function()
-                local proj, err = zef_project.init()
-                assert.falsy(proj)
+                local ret, err = proj.init()
+                assert.falsy(ret)
+                assert.are.same('unexpected entry: `bad_key`', err)
             end)
         end)
 
         it('fails if cache database opening fails', function()
-            __old_cachedb = package.loaded.zef_cachedb
-            package.loaded.zef_cachedb.open = function()
-                return false, 'Requested orchestrated error on zef_cachedb.open()'
-            end
+            cachedbmock.fail_on_open = true
 
-            local proj, err = zef_project.init()
-            assert.falsy(proj)
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+                ]],
+            function()
+                local ret, err = proj.init()
+                assert.falsy(ret)
+                assert.are.same('Requested orchestrated error on zef_cachedb.open()', err)
+            end)
+
+            cachedbmock.fail_on_open = false
+            
         end)
 
         it('fails if ZefConfig.yaml reading fails', function()
@@ -636,8 +654,9 @@ options:
       default: aaa
                 ]]
             }, {}, {}, function()
-                local proj, err = zef_project.init()
-                assert.falsy(proj)
+                local ret, err = proj.init()
+                assert.falsy(ret)
+                assert.are.same('no `ZefConfig.yaml` file present', err)
             end)
         end)
 
@@ -656,8 +675,11 @@ options:
 string_option: [ 'a', 'b', 'c' ]
                 ]],
             function()
-                local proj, err = zef_project.init()
-                assert.falsy(proj)
+                logmock.purge()
+                logmock.enable()
+                local ret, err = proj.init()
+                assert.falsy(ret)
+                assert.truthy(logmock.has_item('could not validate all options:'))
             end)
         end)
     end)
