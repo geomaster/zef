@@ -4,7 +4,7 @@ local cachedbmock = require('zefcachedb-mock')
 package.path = '../src/?.lua;' .. package.path
 
 function inject_fsmock(fsmock, zefproj)
-    fsmock:inject(zefproj)
+   fsmock:inject(zefproj)
 end
 
 function restore_fsmock(fsmock, zefproj)
@@ -184,9 +184,28 @@ key4: yes
                 }, yaml)
             end)
         end)
+
+        it('fails with malformed Yaml', function()
+            with_zefyaml(proj,
+                [[
+---
+key1: [ 'a', 'b'
+                ]],
+            function()
+                local yaml, err = proj.read_zefyaml()
+                assert.falsy(yaml)
+                assert.truthy(err:find('error while parsing `Zef.yaml`'))
+            end)
+        end)
     end)
 
     describe('Zef.yaml validation', function()
+        it('fails when a non-table type is given', function()
+            local ret, err = proj.validate_zefyaml('this is not how any of this works')
+            assert.falsy(ret)
+            assert.are.same('invalid data type for Zef.yaml data', err)
+        end)
+
         it('fails when mandatory keys are not given', function()
             with_zefyaml(proj,
                 [[
@@ -379,6 +398,21 @@ options:
                 [[
 ---
 project: Project Name
+options: 
+    - type: string
+      invalid_key: invalid key value
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('unexpected entry: `invalid_key` in option `unknown`', err)
+            end)
+
+
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
 options:
     - name: non_enum_option
       type: string
@@ -388,6 +422,35 @@ options:
                 local ret, err = read_validate_zefyaml(proj)
                 assert.falsy(ret)
                 assert.are.same('`values` not allowed for types that are not enum in option `non_enum_option`', err)
+            end)
+        end)
+
+        it('rejects invalid key types for options', function()
+            with_zefyaml(proj, 
+                [[
+---
+project: Project Name
+options:
+    - name: yes
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('unexpected type for entry `name` in option `unknown`', err)
+            end)
+            
+            with_zefyaml(proj, 
+                [[
+---
+project: Project Name
+options:
+    - name: valid_name
+      type: 42
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('unexpected type for entry `type` in option `valid_name`', err)
             end)
 
         end)
@@ -429,6 +492,54 @@ options:
                 assert.falsy(ret)
                 assert.are.same('not a valid option type: `invalid_type` in option `option1`', err)
             end)
+        end)
+    end)
+
+    describe('option type validation function', function()
+        it('correctly validates/rejects options with common atom types', function()
+            local types = {
+                string = 'A string',
+                number = 42,
+                boolean = true,
+                path = '/this/is/a/path/'
+            }
+
+            -- check if correct types are accepted
+            for t, v in pairs(types) do
+                assert.truthy(proj.validate_option_type(v, { ['type'] = t }))
+            end
+
+            -- check if incorrect types are rejected
+            for t, v in pairs(types) do
+                for t2, v2 in pairs(types) do
+                    if t2 ~= t and not ((t == 'path' and t2 == 'string') or 
+                        (t == 'string' and t2 == 'path')) then
+                        -- mismatching types
+                        assert.falsy(proj.validate_option_type(v2, { ['type'] = t }))
+                    end
+                end
+            end
+        end)
+
+        it('correctly validates enum types', function()
+            assert.falsy(proj.validate_option_type(42, { ['type'] = 'enum', values = { 'a' } }))
+            assert.falsy(proj.validate_option_type('not in enum', {
+                ['type'] = 'enum',
+                values = { 'in enum', 'also in enum' }
+            }))
+
+            local enumdesc = {
+                ['type'] = 'enum',
+                values = { 'aaa', 'bbb', 'ccc', 'ddd' }
+            }
+
+            for _, v in pairs(enumdesc.values) do
+                assert.truthy(proj.validate_option_type(v, enumdesc))
+            end
+        end)
+
+        it('fails to validate for non-existent types', function()
+            assert.falsy(proj.validate_option_type('some string', 'bad_type'))
         end)
     end)
 
@@ -587,6 +698,21 @@ string_tuple_option: 40
                 assert.are.same('option `string_tuple_option` should be a tuple of type `string`, '..
                     'single value of wrong type given', err[1])
             end)
+
+            with_zefconfig(proj, zefyaml,
+                [[
+---
+string_tuple_option: 
+    should: not be an associative array
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.falsy(ret)
+                assert.are.same(1, #err)
+                assert.are.same('option `string_tuple_option` is not of valid type, should be '..
+                    'a tuple of `string`s, bad key `should` found', err[1])
+            end)
+
         end)
 
         it('assumes a single-valued tuple when appropriate', function()
