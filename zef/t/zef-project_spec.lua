@@ -493,6 +493,77 @@ options:
                 assert.are.same('not a valid option type: `invalid_type` in option `option1`', err)
             end)
         end)
+
+        it('rejects repeated values for enums', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: enum
+      values: [ 'a', 'b', 'c', 'a' ]
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('enum value `a` repeated in option `option1`', err)
+            end)
+        end)
+
+        it('rejects non-string values for enums', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: enum
+      values: [ 'a', 'b', 42 ]
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('all enum values should be of type `string`, bad value `42` found in ' ..
+                    'option `option1`', err)
+            end)
+        end)
+
+        it('rejects non-array `values` field for enums', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: enum
+      values: 
+        associative: array
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('`values` should be an array of valid values, bad key `associative` found in ' ..
+                    'option `option1`', err)
+            end)
+            
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: enum
+      values: 
+        2: invalid_index
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('`values` should be an array of valid values, bad key `2` found in ' ..
+                    'option `option1`', err)
+            end)
+        end)
     end)
 
     describe('option type validation function', function()
@@ -648,7 +719,7 @@ optional_option: overriden default
             end)
         end)
 
-        it('rejects bad option types', function()
+        it('rejects bad option types for atoms', function()
             with_zefconfig(proj, zefyaml, 
                 [[
 ---
@@ -685,7 +756,9 @@ string_tuple_option: [ 2, 3, yes ]
                         'of type `string`'))
                 end
             end)
+        end)
 
+        it('rejects single values of wrong type for enums', function()
             with_zefconfig(proj, zefyaml,
                 [[
 ---
@@ -698,7 +771,9 @@ string_tuple_option: 40
                 assert.are.same('option `string_tuple_option` should be a tuple of type `string`, '..
                     'single value of wrong type given', err[1])
             end)
+        end)
 
+        it('rejects non-arrays `values` field for enums', function()
             with_zefconfig(proj, zefyaml,
                 [[
 ---
@@ -713,6 +788,19 @@ string_tuple_option:
                     'a tuple of `string`s, bad key `should` found', err[1])
             end)
 
+            with_zefconfig(proj, zefyaml,
+                [[
+---
+string_tuple_option: 
+    2: invalid_index
+                ]],
+            function()
+                local ret, err = read_validate_zefconfig(proj)
+                assert.falsy(ret)
+                assert.are.same(1, #err)
+                assert.are.same('option `string_tuple_option` is not of valid type, should be '..
+                    'a tuple of `string`s, bad key `2` found', err[1])
+            end)
         end)
 
         it('assumes a single-valued tuple when appropriate', function()
