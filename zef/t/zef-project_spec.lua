@@ -896,5 +896,27 @@ string_option: [ 'a', 'b', 'c' ]
                 assert.truthy(logmock.has_item('could not validate all options:'))
             end)
         end)
+
+        it('returns a project file if all conditions are met', function()
+            with_zefconfig(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: string_option
+      type: string
+      default: 'aaa'
+      tuple: yes
+                ]],
+                [[
+---
+string_option: [ 'a', 'b', 'c' ]
+                ]],
+            function()
+                local ret, err = proj.init()
+                assert.truthy(ret)
+                assert.are.same('table', type(ret))
+            end)
+        end)
     end)
 end)
