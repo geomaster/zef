@@ -487,10 +487,25 @@ options:
                 local ret, err = read_validate_zefyaml(proj)
                 assert.falsy(ret)
                 assert.are.same('required entry `values` in option `option1` not found', err)
-
-                -- the rest of these are covered in other tests which explicitly
-                -- hit all paths in validate_option
             end)
+        end)
+
+        it('does not accept empty `values` entries', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: enum
+      values: []
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('empty `values` entry found in option `option1`', err)
+            end)
+
         end)
 
         it('accepts valid default values for options', function()

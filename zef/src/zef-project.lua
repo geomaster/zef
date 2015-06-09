@@ -176,6 +176,10 @@ function zef_project.validate_zefyaml(zefyaml)
 
                         seen_values[v] = true
                     end
+                    
+                    if vallen == 0 then
+                        return nil, string.format('empty `values` entry found in option `%s`', name)
+                    end
                 else
                     return nil, string.format('`values` not allowed for types that are not enum in option `%s`', 
                         name)
