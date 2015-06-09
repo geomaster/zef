@@ -249,7 +249,6 @@ description: blah blah
             end
         end)
 
-
         it('accepts and correctly parses allowed non-options keys', function()
             with_zefyaml(proj,
                 [[
@@ -453,6 +452,26 @@ options:
                 assert.are.same('unexpected type for entry `type` in option `valid_name`', err)
             end)
 
+        end)
+
+        it('rejects invalid default values for options', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: string
+      default: 42
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.falsy(ret)
+                assert.are.same('default value error: option `option1` should be of type `string`', err)
+
+                -- the rest of these are covered in other tests which explicitly
+                -- hit all paths in validate_option
+            end)
         end)
 
         it('rejects incomplete options', function()

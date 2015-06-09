@@ -177,6 +177,13 @@ function zef_project.validate_zefyaml(zefyaml)
                 end
             end
 
+            if v.default then
+                local ret, err = zef_project.validate_option(v.default, name, v)
+                if not ret then
+                    return nil, string.format('default value error: %s', err[1])
+                end
+            end
+
             opts[name] = {
                 ['type'] = typ,
                 values = v.values,
