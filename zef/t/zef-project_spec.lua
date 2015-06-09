@@ -474,6 +474,24 @@ options:
             end)
         end)
 
+        it('accepts valid default values for options', function()
+            with_zefyaml(proj,
+                [[
+---
+project: Project Name
+options:
+    - name: option1
+      type: enum
+      values: [ 'a', 'b', 'c', 'd' ]
+      tuple: yes
+      default: [ 'a', 'c', 'd' ]
+                ]],
+            function()
+                local ret, err = read_validate_zefyaml(proj)
+                assert.truthy(ret)
+            end)
+        end)
+
         it('rejects incomplete options', function()
             local entries = { 
                 name = { missing = 'type', value = 'option'},
