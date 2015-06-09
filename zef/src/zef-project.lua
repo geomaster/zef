@@ -129,11 +129,13 @@ function zef_project.validate_zefyaml(zefyaml)
 
             for k1, v1 in pairs(v) do
                 if not valid_keys[k1] then
-                    return nil, string.format('unexpected entry: `%s` in option `%s`', k1, v.name or 'unknown')
+                    return nil, string.format('unexpected entry: `%s` in option `%s`', k1, 
+                        type(v.name) == 'string' and v.name or 'unknown')
                 end
                 if type(valid_keys[k1]) == 'string' and type(v1) ~= valid_keys[k1] then
                     return nil, string.format(
-                        'unexpected type for entry `%s` in option `%s`', k1, v.name or 'unknown')
+                        'unexpected type for entry `%s` in option `%s`', k1, type(v.name) == 'string'
+                            and v.name or 'unknown')
                 end
                 if mandatory_keys[k1] ~= nil then mandatory_keys[k1] = true end
             end
@@ -151,9 +153,28 @@ function zef_project.validate_zefyaml(zefyaml)
                 return nil, string.format('not a valid option type: `%s` in option `%s`', typ, name)
             end
 
-            if typ ~= 'enum' and v.values ~= nil then
-                return nil, string.format('`values` not allowed for types that are not enum in option `%s`', 
-                    name)
+            if v.values ~= nil then
+                local vallen = #v.values
+                if typ == 'enum' then
+                    local seen_values = {}
+
+                    for i, v in pairs(v.values) do
+                        if type(i) ~= 'number' or i < 1 or i > vallen then
+                            return nil, string.format('`values` should be an array of valid values, bad key '..
+                                '`%s` found in option `%s`', i, name)
+                        elseif type(v) ~= 'string' then
+                            return nil, string.format('all enum values should be of type `string`, bad value '..
+                                '`%s` found in option `%s`', v, name)
+                        elseif seen_values[v] then
+                            return nil, string.format('enum value `%s` repeated in option `%s`', v, name)
+                        end
+
+                        seen_values[v] = true
+                    end
+                else
+                    return nil, string.format('`values` not allowed for types that are not enum in option `%s`', 
+                        name)
+                end
             end
 
             opts[name] = {
@@ -239,7 +260,7 @@ function zef_project.validate_options(desc, options)
                     for i, item in pairs(v) do
                         if type(i) ~= 'number' or i < 1 or i > vlen then
                             pass = nonpass(string.format('option `%s` is not of valid type, should be '..
-                                'a tuple of `%s`s, non-integral key `%s` found', k, desc['type'], i))
+                                'a tuple of `%s`s, bad key `%s` found', k, desc['type'], i))
                         else
                             if not zef_project.validate_option_type(item, desc) then 
                                 pass = nonpass(string.format('element %d of option `%s` should be of '..
