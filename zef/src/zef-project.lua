@@ -127,6 +127,11 @@ function zef_project.validate_zefyaml(zefyaml)
                 ['type'] = false
             }
 
+            -- if this is an enum, `values` should be mandatory
+            if v.type == 'enum' then
+                mandatory_keys.values = false
+            end
+
             for k1, v1 in pairs(v) do
                 if not valid_keys[k1] then
                     return nil, string.format('unexpected entry: `%s` in option `%s`', k1, 
