@@ -223,10 +223,54 @@ function zef_project.validate_option_type(option, desc)
     return false
 end
 
+function zef_project.validate_option(v, name, desc)
+    local errors = {}
+    local pass = true
+
+    if desc.tuple then
+        if type(v) == 'table' then
+            local vlen = #v
+            for i, item in pairs(v) do
+                if type(i) ~= 'number' or i < 1 or i > vlen then
+                    table.insert(errors, string.format('option `%s` is not of valid type, should be '..
+                        'a tuple of `%s`s, bad key `%s` found', name, desc['type'], i))
+
+                    pass = false
+                else
+                    if not zef_project.validate_option_type(item, desc) then 
+                        table.insert(errors, string.format('element %d of option `%s` should be of '..
+                            'type `%s`', i, name, desc['type']))
+
+                        pass = false
+                    end
+                end
+            end
+
+            if pass then
+                return v
+            else
+                return nil, errors
+            end
+        elseif zef_project.validate_option_type(v, desc) then
+            -- make it a single-valued tuple
+            return { v }
+        else
+            return nil, { string.format('option `%s` should be a tuple of type `%s`, '..
+                'single value of wrong type given', name, desc['type']) }
+        end
+    else
+        if not zef_project.validate_option_type(v, desc) then
+            return nil, { string.format('option `%s` should be of type `%s`',
+                name, desc['type']) }
+        end
+
+        return v
+    end
+end
+
 function zef_project.is_valid_path(path)
     return true -- TODO
 end
-
 
 function zef_project.validate_options(desc, options)
     local optdesc = desc.options or {}
@@ -253,32 +297,12 @@ function zef_project.validate_options(desc, options)
         if not desc then
             pass = nonpass(string.format('option `%s` not recognized', k))
         else
-            -- check the type
-            if desc.tuple then
-                if type(v) == 'table' then
-                    local vlen = #v
-                    for i, item in pairs(v) do
-                        if type(i) ~= 'number' or i < 1 or i > vlen then
-                            pass = nonpass(string.format('option `%s` is not of valid type, should be '..
-                                'a tuple of `%s`s, bad key `%s` found', k, desc['type'], i))
-                        else
-                            if not zef_project.validate_option_type(item, desc) then 
-                                pass = nonpass(string.format('element %d of option `%s` should be of '..
-                                    'type `%s`', i, k, desc['type']))
-                            end
-                        end
-                    end
-                elseif zef_project.validate_option_type(v, desc) then
-                    -- make it a single-valued tuple
-                    options[k] = { v }
-                else
-                    pass = nonpass(string.format('option `%s` should be a tuple of type `%s`, '..
-                        'single value of wrong type given', k, desc['type']))
-                end
+            local opt, err = zef_project.validate_option(v, k, desc)
+            if opt then
+                options[k] = opt
             else
-                if not zef_project.validate_option_type(v, desc) then
-                    pass = nonpass(string.format('option `%s` should be of type `%s`',
-                        k, desc['type']))
+                for _, v in ipairs(err) do
+                    pass = nonpass(v)
                 end
             end
         end
