@@ -9,7 +9,7 @@ function zef_cachedb.open(proj)
     local cachedb = { db = db }
     if not db then 
         return nil, string.format(
-            'could not read database `%s`: %s', CacheDBFilename, err)
+            'could not read/create database `%s`: %s', CacheDBFilename, err)
     end
 
     local ret = db:exec([[
