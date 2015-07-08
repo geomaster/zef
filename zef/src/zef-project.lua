@@ -308,9 +308,7 @@ function zef_project.validate_options(desc, options)
   
     for k, v in pairs(optdesc) do
         if options[k] == nil then
-            if v.default == nil then
-                pass = nonpass(string.format('option `%s` required but not supplied', k))
-            else
+            if v.default ~= nil then
                 options[k] = v.default
             end
         end

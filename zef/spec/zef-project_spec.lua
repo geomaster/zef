@@ -763,20 +763,20 @@ unknown_option: 300
             end)
         end)
 
-        it('rejects when a required option is not defined', function()
+        it('sets nil when an option with no default is not defined', function()
             with_zefconfig(proj,
                 [[
 ---
 project: Project Name
 options:
-    - name: required_option
+    - name: nodefault_option
       type: string
-      description: Is a required option
+      description: Is a nodefault option
 
     - name: optional_option
       type: string
       default: this is default
-      description: Is not a required option
+      description: Is a default option
                 ]],
                 [[
 ---
@@ -784,9 +784,9 @@ optional_option: overriden default
                 ]],
             function()
                 local ret, err = read_validate_zefconfig(proj)
-                assert.falsy(ret)
-                assert.are.same(1, #err)
-                assert.are.same('option `required_option` required but not supplied', err[1])
+                assert.are.same({
+                    optional_option = 'overriden default'
+                }, ret);
             end)
         end)
 
