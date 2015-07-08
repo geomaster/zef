@@ -4,8 +4,9 @@ local lyaml = require('lyaml')
 
 local CacheDBFilename = '.Zefcache'
 
-function zef_cachedb.open(proj)
+function zef_cachedb.open(proj, filename)
     local db, err = sqlite3.open(CacheDBFilename)
+    filename = filename or CacheDBFilename
     local cachedb = { db = db }
     if not db then 
         return nil, string.format(
@@ -13,61 +14,97 @@ function zef_cachedb.open(proj)
     end
 
     local ret = db:exec([[
-         CREATE TABLE IF NOT EXISTS param
-            (name TEXT NOT NULL UNIQUE PRIMARY KEY, 
-             value TEXT);
-
-         CREATE TABLE IF NOT EXISTS file
+          -- Denotes a file Zef knows about. last_visit 
+          -- stores the timestamp telling the time this
+          -- file was last visited by the build system
+          -- i.e. it was checked for changes and all
+          -- dependent nodes were marked as dirty.
+          CREATE TABLE IF NOT EXISTS file
             (id INTEGER NOT NULL UNIQUE PRIMARY KEY,
              path TEXT NOT NULL,
-             timestamp INTEGER NOT NULL)
+             last_visited INTEGER)
 
-         -- type is one of 
-         --   meta
-         --   phony
-         --   file
-         CREATE TABLE IF NOT EXISTS target
+          -- Denotes a possible build target Zef knows about.
+          -- parent_id records the name of the target which
+          -- emitted the rule for this one, or NULL if the
+          -- target was explicit in the rules file. If the
+          -- target refers to a file, its file_id field 
+          -- records an index into the file table, and its
+          -- name field is NULL. If not, file_id is NULL and
+          -- the name column denotes the name of this `phony`
+          -- target. is_meta denotes if the target is a meta
+          -- target or an ordinary one. Meta targets can add
+          -- new targets to the build system but can not have
+          -- side effects; they are evaluated first to get
+          -- a complete list of all buildable nodes in the 
+          -- system.
+          CREATE TABLE IF NOT EXISTS target
             (id INTEGER NOT NULL UNIQUE PRIMARY KEY,
-             name TEXT NOT NULL,
-             type CHAR(8) NOT NULL,
-             rules TEXT NOT NULL,
-             file_id INTEGER NOT NULL REFERENCES (file.id));
+             name TEXT,
+             parent_id INTEGER REFERENCES (target.id),
+             rule BLOB,
+             is_meta INTEGER CHECK(is_meta in (0, 1)) NOT NULL,
+             file_id INTEGER REFERENCES (file.id));
 
+         -- Denotes features Zef knows about.
          CREATE TABLE IF NOT EXISTS feature
             (id INTEGER NOT NULL UNIQUE PRIMARY KEY,
              name TEXT NOT NULL UNIQUE PRIMARY KEY);
-
-         -- type is one of
-         --   target
-         --   feature
-         --   option
+         
+         -- Denotes a single node in the DAG that Zef
+         -- operateson. The node itself can be either a 
+         -- feature, an option, or a target. This is 
+         -- denoted as the value of the type column, 
+         -- where:
+         --    1 means the node is a feature,
+         --    2 means the node is an option and
+         --    3 means the node is a target.
+         --
+         -- ref_id is either a target.id, feature.id or
+         -- option.id, depending on the value of the 
+         -- type field. is_dirty tells us whether or 
+         -- not the node is marked as dirty (meaning 
+         -- that one of its dependencies was marked as
+         -- dirty) and needs rebuilding.
          CREATE TABLE IF NOT EXISTS node
             (id INTEGER NOT NULL UNIQUE PRIMARY KEY,
-             type CHAR(8) NOT NULL,
-             timestamp INTEGER,
+             type INTEGER CHECK(type in (1, 2, 3)) NOT NULL,
+             is_dirty INTEGER CHECK(is_dirty in (0, 1)) NOT NULL,
              ref_id INTEGER NOT NULL);
 
+         -- Denotes an edge from one node to another 
+         -- in the DAG that Zef operates on. 
          CREATE TABLE IF NOT EXISTS edge
             (id_from INTEGER NOT NULL REFERENCES(node.id),
              id_to INTEGER NOT NULL REFERENCES(node.id),
-             state INTEGER NOT NULL,
              UNIQUE PRIMARY KEY (id_from, id_to));
 
+         -- Denotes a feature provider that Zef operates
+         -- on. feature_id and file_id are what you 
+         -- think they are.
          CREATE TABLE IF NOT EXISTS provider
             (name TEXT NOT NULL UNIQUE PRIMARY KEY,
              feature_id INTEGER NOT NULL REFERENCES(feature.name),
              file_id INTEGER NOT NULL REFERENCES(file.id));
 
+         -- Denotes an option in the build system that
+         -- Zef knows about. name is the option name
+         -- as denoted in the Zef.yaml file, while 
+         -- desc_yaml is the YAML representation of the
+         -- option description and value_yaml is the
+         -- YAML representation of the option value, as
+         -- read from the Zefconfig file. 
          CREATE TABLE IF NOT EXISTS option
             (id INTEGER NOT NULL UNIQUE PRIMARY KEY,
              name TEXT NOT NULL,
              desc_yaml TEXT NOT NULL,
-             value_yaml TEXT NOT NULL,
-             file_id INTEGER NOT NULL REFERENCES(file.id))
+             value_yaml TEXT)
          
          CREATE INDEX IF NOT EXISTS file_by_path ON file(path)
          CREATE INDEX IF NOT EXISTS feature_by_name ON feature(name)
          CREATE INDEX IF NOT EXISTS option_by_name ON option(name)
+         CREATE INDEX IF NOT EXISTS edge_by_from ON edge(id_from)
+         CREATE INDEX IF NOT EXISTS edge_by_to ON edge(id_to)
 
          ]])
     if ret ~= sqlite3.OK then 
@@ -84,7 +121,7 @@ end
 function zef_cachedb:get_file_timestamp(path)
     local db = self.db
     local stmt = self.db:prepare([[
-        SELECT timestamp FROM file WHERE path = ?
+        SELECT last_visit FROM file WHERE path = ?
     ]])
     local ret = stmt:bind_values(path)
     if ret ~= sqlite3.OK then
@@ -93,7 +130,7 @@ function zef_cachedb:get_file_timestamp(path)
 
     local timestamp
     for row in stmt:nrows() do
-        timestamp = row.timestamp
+        timestamp = row.last_visit
     end
 
     return timestamp
@@ -117,10 +154,10 @@ function zef_cachedb:set_file_timestamp(path, timestamp)
     end
 
     if filecount == 0 then
-        stmt = db:prepare('INSERT INTO file (path, timestamp) VALUES (?, ?) ')
+        stmt = db:prepare('INSERT INTO file (path, last_visit) VALUES (?, ?) ')
         ret = stmt:bind_values(path, timestamp)
     else 
-        stmt = db:prepare('UPDATE file SET timestamp = ? WHERE path = ?')
+        stmt = db:prepare('UPDATE file SET last_visit = ? WHERE path = ?')
         ret = stmt:bind_values(timestamp, path)
     end
 
@@ -139,13 +176,10 @@ end
 function zef_cachedb:get_options()
     local db = self.db
     local stmt = db:prepare([[
-        SELECT file.path AS source_file,
-               option.name AS name
-               option.desc_yaml AS desc,
-               option.value_yaml AS value,
-               node.timestamp AS timestamp
-        INNER JOIN file ON file.id = option.file_id
-        LEFT JOIN node ON node.type = 'option' AND node.ref_id = option.id
+        SELECT name AS name
+               desc_yaml AS desc,
+               value_yaml AS value,
+        FROM option
     ]])
 
     
@@ -162,8 +196,7 @@ function zef_cachedb:get_options()
         end
 
         local opt =
-            { name = sqlopt.name, file = sqlopt.source_file,
-              desc = yamld, value = yamlv, timestamp = sqlopt.timestamp }
+            { name = sqlopt.name, desc = yamld, value = yamlv }
             
         table.insert(opts, opt)
         ret = stmt:step()
