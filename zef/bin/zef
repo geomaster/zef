@@ -1,2 +1,3 @@
-#!/bin/zsh
-LUA_PATH=/home/geomaster/Projects/zef/zef/src/?.lua\;$LUA_PATH lua ~/Projects/zef/zef/src/zef.lua "$@"
+#!/usr/bin/env luajit
+package.path = debug.getinfo(1, "S").source:match[[^@?(.*[\/])[^\/]-$]] .."/../src/?.lua;".. package.path
+require 'zef'
