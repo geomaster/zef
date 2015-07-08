@@ -844,7 +844,7 @@ string_tuple_option: 40
             end)
         end)
 
-        it('rejects non-arrays `values` field for enums', function()
+        it('rejects non-array values for tuples', function()
             with_zefconfig(proj, zefyaml,
                 [[
 ---

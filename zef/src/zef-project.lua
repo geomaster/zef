@@ -159,7 +159,11 @@ function zef_project.validate_zefyaml(zefyaml)
             end
 
             if v.values ~= nil then
-                local vallen = #v.values
+                local vallen = 0
+                for i, _ in pairs(v.values) do
+                    vallen = vallen + 1
+                end
+
                 if typ == 'enum' then
                     local seen_values = {}
 
@@ -245,7 +249,11 @@ function zef_project.validate_option(v, name, desc)
 
     if desc.tuple then
         if type(v) == 'table' then
-            local vlen = #v
+            local vlen = 0
+            for i, _ in pairs(v) do
+                vlen = vlen + 1
+            end
+
             for i, item in pairs(v) do
                 if type(i) ~= 'number' or i < 1 or i > vlen then
                     table.insert(errors, string.format('option `%s` is not of valid type, should be '..
