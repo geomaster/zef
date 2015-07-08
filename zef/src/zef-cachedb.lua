@@ -94,11 +94,38 @@ function zef_cachedb.open(proj, filename)
          -- option description and value_yaml is the
          -- YAML representation of the option value, as
          -- read from the Zefconfig file. 
+         --
+         -- type is one of
+         --     1 - string
+         --     2 - path
+         --     3 - number
+         --     4 - enum
+         --     5 - boolean
+         --
+         -- is_tuple is 0 if the option isn't a tuple, 1
+         -- otherwise. 
+         -- 
+         -- default denotes the default value to assume 
+         -- when no value is given. When no value is 
+         -- given and there is not a default value set,
+         -- this option will trigger an error if the build
+         -- rules attempt to access its value. value 
+         -- denotes the current value the option has. Both
+         -- default and value fields are in YAML notation.
+         -- If the type is an enum (4), values will be a 
+         -- YAML string of an array of possible values.
+         --
+         -- Sorry, the design is not completely following
+         -- the principles, but should work fine.
          CREATE TABLE IF NOT EXISTS option
             (id INTEGER NOT NULL UNIQUE PRIMARY KEY,
-             name TEXT NOT NULL,
-             desc_yaml TEXT NOT NULL,
-             value_yaml TEXT)
+             name TEXT UNIQUE NOT NULL,
+             description TEXT,
+             type INTEGER CHECK(type in (1, 2, 3, 4, 5)) NOT NULL,
+             is_tuple INTEGER CHECK(is_tuple in (0, 1)) NOT NULL,
+             values TEXT,
+             default TEXT,
+             value TEXT)
          
          CREATE INDEX IF NOT EXISTS file_by_path ON file(path)
          CREATE INDEX IF NOT EXISTS feature_by_name ON feature(name)
