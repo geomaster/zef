@@ -52,7 +52,7 @@ function zef_cachedb.open(proj, filename)
              name TEXT NOT NULL UNIQUE PRIMARY KEY);
          
          -- Denotes a single node in the DAG that Zef
-         -- operateson. The node itself can be either a 
+         -- operates on. The node itself can be either a 
          -- feature, an option, or a target. This is 
          -- denoted as the value of the type column, 
          -- where:
@@ -132,7 +132,6 @@ function zef_cachedb.open(proj, filename)
          CREATE INDEX IF NOT EXISTS option_by_name ON option(name)
          CREATE INDEX IF NOT EXISTS edge_by_from ON edge(id_from)
          CREATE INDEX IF NOT EXISTS edge_by_to ON edge(id_to)
-
          ]])
     if ret ~= sqlite3.OK then 
         return nil, self:db_error()
