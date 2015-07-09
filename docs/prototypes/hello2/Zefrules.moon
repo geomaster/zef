@@ -82,8 +82,8 @@ add meta target 'source_files_glob', -> fs.glob('src/*.c')
 add meta target 'objfiles', -> 
     objs = {}
     for _, x in ipairs T.sources!
-        src = 'src/' .. x .. '.c'
-        obj = O.build_dir .. 'obj/' .. x .. '.o'
+        src = "src/#{x}.c"
+        obj = "#{O.build_dir}obj/#{x}.c"
         table.insert objs, file obj
 
         add file target obj, ->
@@ -105,7 +105,7 @@ add meta target 'objfiles', ->
 -- acceses the current target. In this case, `@output` (or 
 -- `self.output`) returns the file used as the output from
 -- this rule.
-add meta target 'executable', -> file O.build_dir .. 'bin/hello', ->
+add meta target 'executable', -> file "#{O.build_dir}bin/hello", ->
     with F.cc!
         \input T.objfiles!
         \output @output
