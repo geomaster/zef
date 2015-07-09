@@ -83,7 +83,7 @@ add meta target 'objfiles', ->
     objs = {}
     for _, x in ipairs T.sources!
         src = "src/#{x}.c"
-        obj = "#{O.build_dir}obj/#{x}.c"
+        obj = "#{O.build_dir}obj/#{x}.o"
         table.insert objs, file obj
 
         add file target obj, ->
