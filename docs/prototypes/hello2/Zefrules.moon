@@ -37,7 +37,8 @@ add meta target 'source_files_glob', -> fs.glob('src/*.c')
 -- define any new targets and could have been a phony
 -- one, however since this metatarget depends on it,
 -- and metatargets must be built before all other 
--- targets.
+-- targets, it follows that it must be a metatarget
+-- for the dependency to be satisfied.
 --
 -- The `T` object inside the target rules is a 
 -- shorthand for `targets`, which can invoke and 
@@ -80,11 +81,9 @@ add meta target 'source_files_glob', -> fs.glob('src/*.c')
 -- rules body is the same as it would look like 
 -- outside.
 add meta target 'objfiles', -> 
-    objs = {}
-    for _, x in ipairs T.sources!
+    for x in *T.sources!
         src = "src/#{x}.c"
         obj = "#{O.build_dir}obj/#{x}.o"
-        table.insert objs, file obj
 
         add file target obj, ->
             with F.cc!
@@ -92,7 +91,8 @@ add meta target 'objfiles', ->
                 \output file obj
                 \optimize O.optimization_level
                 \run!
-    objs
+
+        obj
 
 -- Another metatarget. In this case, both a second and
 -- a third argument is given to `target`. This is a 
